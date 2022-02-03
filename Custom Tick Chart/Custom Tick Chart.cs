@@ -169,8 +169,6 @@ namespace cAlgo
 
         public override void Calculate(int index)
         {
-            if (index < 2000) return;
-
             if (_isChartTypeValid == false) return;
 
             var otherBarsIndex = _bars.OpenTimes.GetIndexByTime(Bars.OpenTimes[index]);
@@ -201,6 +199,8 @@ namespace cAlgo
 
                 FillOutputs(index, _lastBar);
             }
+
+            DrawBar(_lastBar);
         }
 
         #endregion Overridden methods
@@ -243,30 +243,33 @@ namespace cAlgo
 
             var barBodyColor = lastBar.Open > lastBar.Close ? _bearishBarBodyColor : _bullishBarBodyColor;
 
-            lastBar.Rectangle = Area.DrawRectangle(objectName, lastBar.StartTime, decimal.ToDouble(lastBar.Open), lastBar.EndTime, decimal.ToDouble(lastBar.Close), barBodyColor, BodyThickness, BodyLineStyle);
+            var open = decimal.ToDouble(lastBar.Open);
+            var close = decimal.ToDouble(lastBar.Close);
 
-            lastBar.Rectangle.IsFilled = FillBody;
+            var bodyRectangle = Area.DrawRectangle(objectName, lastBar.StartTime, open, lastBar.EndTime, close, barBodyColor, BodyThickness, BodyLineStyle);
+
+            bodyRectangle.IsFilled = FillBody;
 
             if (ShowWicks)
             {
                 string upperWickObjectName = string.Format("{0}.UpperWick", objectName);
                 string lowerWickObjectName = string.Format("{0}.LowerWick", objectName);
 
-                var barHalfTimeInMinutes = (_lastBar.Rectangle.Time2 - _lastBar.Rectangle.Time1).TotalMinutes / 2;
-                var barCenterTime = _lastBar.Rectangle.Time1.AddMinutes(barHalfTimeInMinutes);
+                var barHalfTimeInMinutes = (lastBar.EndTime - _lastBar.StartTime).TotalMinutes / 2;
+                var barCenterTime = lastBar.StartTime.AddMinutes(barHalfTimeInMinutes);
 
                 if (lastBar.Open > lastBar.Close)
                 {
-                    Area.DrawTrendLine(upperWickObjectName, barCenterTime, _lastBar.Rectangle.Y1, barCenterTime, decimal.ToDouble(lastBar.High),
+                    Area.DrawTrendLine(upperWickObjectName, barCenterTime, open, barCenterTime, decimal.ToDouble(lastBar.High),
                         _bearishBarWickColor, WicksThickness, WicksLineStyle);
-                    Area.DrawTrendLine(lowerWickObjectName, barCenterTime, _lastBar.Rectangle.Y2, barCenterTime, decimal.ToDouble(lastBar.Low),
+                    Area.DrawTrendLine(lowerWickObjectName, barCenterTime, close, barCenterTime, decimal.ToDouble(lastBar.Low),
                         _bearishBarWickColor, WicksThickness, WicksLineStyle);
                 }
                 else
                 {
-                    Area.DrawTrendLine(upperWickObjectName, barCenterTime, _lastBar.Rectangle.Y2,
-                        barCenterTime, decimal.ToDouble(lastBar.High), _bullishBarWickColor, WicksThickness, WicksLineStyle);
-                    Area.DrawTrendLine(lowerWickObjectName, barCenterTime, _lastBar.Rectangle.Y1, barCenterTime, decimal.ToDouble(lastBar.Low),
+                    Area.DrawTrendLine(upperWickObjectName, barCenterTime, close, barCenterTime, decimal.ToDouble(lastBar.High),
+                        _bullishBarWickColor, WicksThickness, WicksLineStyle);
+                    Area.DrawTrendLine(lowerWickObjectName, barCenterTime, open, barCenterTime, decimal.ToDouble(lastBar.Low),
                         _bullishBarWickColor, WicksThickness, WicksLineStyle);
                 }
             }
@@ -286,15 +289,15 @@ namespace cAlgo
                 StartTime = time,
                 Index = index,
                 Open = _previousBar == null ? (decimal)_bars.OpenPrices[index] : _previousBar.Close,
-                High = decimal.MinValue,
-                Low = decimal.MaxValue
             };
+
+            _lastBar.Close = _lastBar.Open;
+            _lastBar.High = _lastBar.Open;
+            _lastBar.Low = _lastBar.Open;
         }
 
         private void UpdateLastBar(DateTime time, int index)
         {
-            int startIndex = _bars.OpenTimes.GetIndexByTime(_lastBar.StartTime);
-
             _lastBar.Close = (decimal)_bars.ClosePrices[index];
             _lastBar.High = Math.Max((decimal)_bars.HighPrices[index], _lastBar.High);
             _lastBar.Low = Math.Min((decimal)_bars.LowPrices[index], _lastBar.Low);
@@ -357,8 +360,6 @@ namespace cAlgo
         public DateTime EndTime { get; set; }
 
         public int Index { get; set; }
-
-        public ChartRectangle Rectangle { get; set; }
 
         public decimal Open { get; set; }
 
