@@ -1,7 +1,8 @@
-﻿using cAlgo.API;
+using cAlgo.API;
 using System;
 using System.Globalization;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace cAlgo
 {
@@ -25,6 +26,8 @@ namespace cAlgo
         private Bars _bars;
 
         private int _timeFrameSizeRatio, _barNumber, _lastBarIndex = -1;
+
+        private readonly List<CustomOhlcBar> _customBars = new List<CustomOhlcBar>();
 
         #endregion Fields
 
@@ -87,10 +90,7 @@ namespace cAlgo
 
         public ChartArea Area
         {
-            get
-            {
-                return IndicatorArea ?? (ChartArea)Chart;
-            }
+            get { return IndicatorArea ?? (ChartArea)Chart; }
         }
 
         #endregion Other properties
@@ -165,26 +165,47 @@ namespace cAlgo
 
             _bullishBarWickColor = GetColor(BullishBarWickColor, WicksOpacity);
             _bearishBarWickColor = GetColor(BearishBarWickColor, WicksOpacity);
+
+            for (int barIndex = 0; barIndex < _bars.Count; barIndex++)
+            {
+                OnBar(barIndex);
+            }
+
+            _bars.BarOpened += obj => OnBar(obj.Bars.Count - 1);
         }
 
         public override void Calculate(int index)
         {
+            var bar = _customBars.FirstOrDefault(iBar => Bars.OpenTimes[index] >= iBar.StartTime && Bars.OpenTimes[index] <= iBar.EndTime);
+
+            if (bar == null) return;
+
+            var startBarIndex = Bars.OpenTimes.GetIndexByTime(bar.StartTime);
+            var endBarIndex = Bars.OpenTimes.GetIndexByTime(bar.EndTime);
+
+            for (int barIndex = startBarIndex; barIndex <= endBarIndex + 1; barIndex++)
+            {
+                FillOutputs(barIndex, bar);
+            }
+        }
+
+        #endregion Overridden methods
+
+        #region Other methods
+
+        private void OnBar(int index)
+        {
             if (_isChartTypeValid == false) return;
 
-            var otherBarsIndex = _bars.OpenTimes.GetIndexByTime(Bars.OpenTimes[index]);
-
-            if (_lastBarIndex == otherBarsIndex)
-            {
-                return;
-            }
+            if (_lastBarIndex == index) return;
 
             _lastBarIndex = index;
 
-            var time = _bars.OpenTimes[otherBarsIndex];
+            var time = _bars.OpenTimes[index];
 
             if (_lastBar == null || _barNumber == _timeFrameSizeRatio)
             {
-                ChangeLastBar(time, otherBarsIndex);
+                ChangeLastBar(time, index);
 
                 _barNumber = 1;
             }
@@ -193,19 +214,13 @@ namespace cAlgo
                 _barNumber += 1;
             }
 
-            for (int barIndex = _lastBar.Index; barIndex <= otherBarsIndex; barIndex++)
+            for (int barIndex = _lastBar.Index; barIndex <= index; barIndex++)
             {
                 UpdateLastBar(time, barIndex);
-
-                FillOutputs(index, _lastBar);
             }
 
             DrawBar(_lastBar);
         }
-
-        #endregion Overridden methods
-
-        #region Other methods
 
         private void FillOutputs(int index, CustomOhlcBar lastBar)
         {
@@ -260,17 +275,13 @@ namespace cAlgo
 
                 if (lastBar.Open > lastBar.Close)
                 {
-                    Area.DrawTrendLine(upperWickObjectName, barCenterTime, open, barCenterTime, decimal.ToDouble(lastBar.High),
-                        _bearishBarWickColor, WicksThickness, WicksLineStyle);
-                    Area.DrawTrendLine(lowerWickObjectName, barCenterTime, close, barCenterTime, decimal.ToDouble(lastBar.Low),
-                        _bearishBarWickColor, WicksThickness, WicksLineStyle);
+                    Area.DrawTrendLine(upperWickObjectName, barCenterTime, open, barCenterTime, decimal.ToDouble(lastBar.High), _bearishBarWickColor, WicksThickness, WicksLineStyle);
+                    Area.DrawTrendLine(lowerWickObjectName, barCenterTime, close, barCenterTime, decimal.ToDouble(lastBar.Low), _bearishBarWickColor, WicksThickness, WicksLineStyle);
                 }
                 else
                 {
-                    Area.DrawTrendLine(upperWickObjectName, barCenterTime, close, barCenterTime, decimal.ToDouble(lastBar.High),
-                        _bullishBarWickColor, WicksThickness, WicksLineStyle);
-                    Area.DrawTrendLine(lowerWickObjectName, barCenterTime, open, barCenterTime, decimal.ToDouble(lastBar.Low),
-                        _bullishBarWickColor, WicksThickness, WicksLineStyle);
+                    Area.DrawTrendLine(upperWickObjectName, barCenterTime, close, barCenterTime, decimal.ToDouble(lastBar.High), _bullishBarWickColor, WicksThickness, WicksLineStyle);
+                    Area.DrawTrendLine(lowerWickObjectName, barCenterTime, open, barCenterTime, decimal.ToDouble(lastBar.Low), _bullishBarWickColor, WicksThickness, WicksLineStyle);
                 }
             }
         }
@@ -288,12 +299,19 @@ namespace cAlgo
             {
                 StartTime = time,
                 Index = index,
-                Open = _previousBar == null ? (decimal)_bars.OpenPrices[index] : _previousBar.Close,
+                Open = _previousBar == null ? (decimal)_bars.OpenPrices[index] : _previousBar.Close
             };
 
             _lastBar.Close = _lastBar.Open;
             _lastBar.High = _lastBar.Open;
             _lastBar.Low = _lastBar.Open;
+
+            if (IsLastBar)
+            {
+                _customBars.Clear();
+            }
+
+            _customBars.Add(_lastBar);
         }
 
         private void UpdateLastBar(DateTime time, int index)
@@ -317,11 +335,13 @@ namespace cAlgo
 
             var bestFitTimeFrame = timeFrames.FirstOrDefault(timeFrame => timeFrame.Item2 <= sizeInPips && sizeInPips % timeFrame.Item2 == 0);
 
-            if (bestFitTimeFrame != null) return bestFitTimeFrame.Item1;
+            if (bestFitTimeFrame != null)
+                return bestFitTimeFrame.Item1;
 
             var smallestTimeFrame = timeFrames.LastOrDefault();
 
-            if (smallestTimeFrame != null) return smallestTimeFrame.Item1;
+            if (smallestTimeFrame != null)
+                return smallestTimeFrame.Item1;
 
             throw new InvalidOperationException(string.Format("Couldn't find a proper time frame for your provided size ({0} Ticks) and type ({1}).", sizeInPips, type));
         }
