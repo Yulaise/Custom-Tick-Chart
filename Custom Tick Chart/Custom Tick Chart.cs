@@ -153,7 +153,9 @@ namespace cAlgo
             {
                 var timeFrame = GetTimeFrame(SizeInTicks, "tick");
 
-                _bars = GetTimeFrameBars(timeFrame);
+                Chart.TryChangeTimeFrame(timeFrame);
+
+                return;
             }
 
             _timeFrameSizeRatio = SizeInTicks / GetTimeFrameSize(_bars.TimeFrame.ToString(), TimeFrameNamePrefix);
@@ -165,6 +167,11 @@ namespace cAlgo
 
             _bullishBarWickColor = GetColor(BullishBarWickColor, WicksOpacity);
             _bearishBarWickColor = GetColor(BearishBarWickColor, WicksOpacity);
+
+            Chart.ColorSettings.BullFillColor = Color.Transparent;
+            Chart.ColorSettings.BearFillColor = Color.Transparent;
+            Chart.ColorSettings.BullOutlineColor = Color.Transparent;
+            Chart.ColorSettings.BearOutlineColor = Color.Transparent;
 
             for (int barIndex = 0; barIndex < _bars.Count; barIndex++)
             {
