@@ -121,31 +121,11 @@ namespace cAlgo
 
             timeFrameName = timeFrameName.Equals("tick", StringComparison.OrdinalIgnoreCase) ? "Tick1" : timeFrameName;
 
-            if (timeFrameName.StartsWith("Tick", StringComparison.Ordinal) == false)
-            {
-                var name = string.Format("Error_{0}", _chartObjectNamesSuffix);
-
-                var error = string.Format("{0} Error: Current chart is not a Tick chart, please switch to a Tick chart", Name);
-
-                Area.DrawStaticText(name, error, VerticalAlignment.Center, HorizontalAlignment.Center, Color.Red);
-
-                return;
-            }
-            else if (Convert.ToInt32(timeFrameName.Substring(TimeFrameNamePrefix.Length), CultureInfo.InvariantCulture) > SizeInTicks)
-            {
-                var name = string.Format("Error_{0}", _chartObjectNamesSuffix);
-
-                var error = string.Format("{0} Error: Your current chart size must be smaller than your set size", Name);
-
-                Area.DrawStaticText(name, error, VerticalAlignment.Center, HorizontalAlignment.Center, Color.Red);
-
-                return;
-            }
-            else if (timeFrameName.Equals(string.Format("Tick{0}", SizeInTicks), StringComparison.OrdinalIgnoreCase))
+            if (timeFrameName.Equals(string.Format("Tick{0}", SizeInTicks), StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
-            else if (SizeInTicks % Convert.ToInt32(timeFrameName.Substring(TimeFrameNamePrefix.Length), CultureInfo.InvariantCulture) == 0)
+            else if (timeFrameName.StartsWith("Tick", StringComparison.Ordinal) && SizeInTicks % Convert.ToInt32(timeFrameName.Substring(TimeFrameNamePrefix.Length), CultureInfo.InvariantCulture) == 0)
             {
                 _bars = Bars;
             }
