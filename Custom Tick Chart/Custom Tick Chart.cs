@@ -33,7 +33,7 @@ namespace cAlgo
 
         #region Parameters
 
-        [Parameter("Size(Ticks)", DefaultValue = 10, Group = "General")]
+        [Parameter("Size(Ticks)", DefaultValue = 75, Group = "General")]
         public int SizeInTicks { get; set; }
 
         [Parameter("Bullish Bar Color", DefaultValue = "Lime", Group = "Body")]
@@ -158,14 +158,21 @@ namespace cAlgo
                 OnBar(barIndex);
             }
 
+            Print("IsLastBar: ", IsLastBar);
+
             _bars.BarOpened += obj => OnBar(obj.Bars.Count - 1);
+
+            Print("Returning from Initialize");
         }
 
         public override void Calculate(int index)
         {
+            Print("Calculate");
             var bar = _customBars.FirstOrDefault(iBar => Bars.OpenTimes[index] >= iBar.StartTime && Bars.OpenTimes[index] <= iBar.EndTime);
 
             if (bar == null) return;
+
+            Print(index);
 
             var startBarIndex = Bars.OpenTimes.GetIndexByTime(bar.StartTime);
             var endBarIndex = Bars.OpenTimes.GetIndexByTime(bar.EndTime);
@@ -293,10 +300,11 @@ namespace cAlgo
             _lastBar.High = _lastBar.Open;
             _lastBar.Low = _lastBar.Open;
 
-            if (IsLastBar)
-            {
-                _customBars.Clear();
-            }
+            // Commented because it causes incompatibility issue with version 4.2
+            //if (IsLastBar)
+            //{
+            //    _customBars.Clear();
+            //}
 
             _customBars.Add(_lastBar);
         }
@@ -336,25 +344,6 @@ namespace cAlgo
         private int GetTimeFrameSize(string timeFrameName, string type)
         {
             return timeFrameName.Equals("tick", StringComparison.OrdinalIgnoreCase) ? 1 : Convert.ToInt32(timeFrameName.Substring(type.Length));
-        }
-
-        private Bars GetTimeFrameBars(TimeFrame timeFrame)
-        {
-            var bars = MarketData.GetBars(timeFrame);
-
-            if (bars.Count == 0)
-            {
-                throw new InvalidOperationException(string.Format("Couldn't load the {0} time frame bars", timeFrame));
-            }
-
-            var numberOfLoadedBars = bars.Count;
-
-            while (numberOfLoadedBars > 0 && bars[0].OpenTime > Bars[0].OpenTime)
-            {
-                numberOfLoadedBars = bars.LoadMoreHistory();
-            }
-
-            return bars;
         }
 
         #endregion Other methods
