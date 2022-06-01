@@ -158,21 +158,14 @@ namespace cAlgo
                 OnBar(barIndex);
             }
 
-            Print("IsLastBar: ", IsLastBar);
-
             _bars.BarOpened += obj => OnBar(obj.Bars.Count - 1);
-
-            Print("Returning from Initialize");
         }
 
         public override void Calculate(int index)
         {
-            Print("Calculate");
             var bar = _customBars.FirstOrDefault(iBar => Bars.OpenTimes[index] >= iBar.StartTime && Bars.OpenTimes[index] <= iBar.EndTime);
 
             if (bar == null) return;
-
-            Print(index);
 
             var startBarIndex = Bars.OpenTimes.GetIndexByTime(bar.StartTime);
             var endBarIndex = Bars.OpenTimes.GetIndexByTime(bar.EndTime);
